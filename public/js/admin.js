@@ -182,6 +182,7 @@ function openSourceForm(src) {
       <input id="src-name" placeholder="源名称（如：我的影视源 / 我的IPTV）" value="${src ? esc(src.name) : ''}">
       <select id="src-type" onchange="onSrcTypeChange()" style="width:100%;min-height:42px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:#16181d;color:#f2f2f2;font-size:15px;">
         <option value="applecms" ${currentType === 'applecms' ? 'selected' : ''}>AppleCMS 影视源（点播）</option>
+        <option value="music" ${currentType === 'music' ? 'selected' : ''}>🎵 音乐网站</option>
         <option value="iptv" ${currentType === 'iptv' ? 'selected' : ''}>IPTV 直播源（M3U）</option>
       </select>
       <input id="src-url" placeholder="AppleCMS 接口地址（形如 https://域名/api.php/provide/vod/）" value="${src ? esc(src.url) : ''}">
@@ -200,12 +201,28 @@ function onSrcTypeChange() {
   const type = (document.getElementById('src-type') || {}).value;
   const urlInput = document.getElementById('src-url');
   const tip = document.getElementById('src-tip');
-  if (type === 'iptv') {
-    if (urlInput) urlInput.placeholder = 'M3U 播放列表地址（http(s) URL，或容器内可访问的本地路径）';
-    if (tip) tip.innerHTML = 'IPTV 源：填写 M3U 播放列表地址。服务端会解析频道，并用 ffmpeg 转码 / 代理成车机可直接播放的流。<br>频道选项写在 M3U 的 <code>#EXTVLCOPT</code> 行：<code>tesla-direct=1</code> 直连、<code>tesla-low=720&aac</code> 转码。';
+
+  if (type === 'music') {
+    if (urlInput) {
+      urlInput.placeholder = '音乐网站地址（如 https://www.5song.xyz/neidi.html）';
+    }
+    if (tip) {
+      tip.innerHTML = '音乐网站：填写完整网站地址。保存后将在「🎵 音乐中心」中显示，点击即可进入。';
+    }
+  } else if (type === 'iptv') {
+    if (urlInput) {
+      urlInput.placeholder = 'M3U 播放列表地址（http(s) URL，或容器内可访问的本地路径）';
+    }
+    if (tip) {
+      tip.innerHTML = 'IPTV 源：填写 M3U 播放列表地址。';
+    }
   } else {
-    if (urlInput) urlInput.placeholder = 'AppleCMS 接口地址（形如 https://域名/api.php/provide/vod/）';
-    if (tip) tip.innerHTML = 'AppleCMS 源：填写采集接口地址，形如 <code>https://域名/api.php/provide/vod/</code>。';
+    if (urlInput) {
+      urlInput.placeholder = 'AppleCMS 接口地址（形如 https://域名/api.php/provide/vod/）';
+    }
+    if (tip) {
+      tip.innerHTML = 'AppleCMS 源：填写采集接口地址，形如 <code>https://域名/api.php/provide/vod/</code>。';
+    }
   }
 }
 window.onSrcTypeChange = onSrcTypeChange;
