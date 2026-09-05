@@ -53,60 +53,212 @@ window.go = go;
 async function render() {
   const { path } = parseHash();
   const segs = path.split('/').filter(Boolean);
+
   try {
     if (!segs.length) await renderHome();
-    else if (segs[0] === 'browse') await renderBrowse(decodeURIComponent(segs[1]));
-    else if (segs[0] === 'detail') await renderDetail(decodeURIComponent(segs[1]), decodeURIComponent(segs[2]));
-    else if (segs[0] === 'webdav') await renderWebdav(decodeURIComponent(segs[1] || ''));
+    else if (segs[0] === 'music') await renderMusic();
+    else if (segs[0] === 'browse') {
+      await renderBrowse(decodeURIComponent(segs[1]));
+    }
+    else if (segs[0] === 'detail') {
+      await renderDetail(
+        decodeURIComponent(segs[1]),
+        decodeURIComponent(segs[2])
+      );
+    }
+    else if (segs[0] === 'webdav') {
+      await renderWebdav(decodeURIComponent(segs[1] || ''));
+    }
     else if (segs[0] === 'iptv') {
       app.innerHTML = '<div class="empty">IPTV 功能已禁用（本部署已移除）</div>';
     }
-    else await renderHome();
+    else {
+      await renderHome();
+    }
   } catch (e) {
-    app.innerHTML = `<div class="empty">加载失败：${esc(e.message)}<br><br><button class="btn primary" onclick="go('/')">返回首页</button></div>`;
+    app.innerHTML = `
+      <div class="empty">
+        加载失败：${esc(e.message)}
+        <br><br>
+        <button class="btn primary" onclick="go('/')">返回首页</button>
+      </div>`;
   }
 }
+
 window.addEventListener('hashchange', render);
 
-// ---------- 首页：数据源列表（仅切换用，管理在 /admin） ----------
+
+// ---------- 首页 ----------
 async function renderHome() {
-  setTitle('车载影视', '选择数据源');
+  setTitle('车载娱乐', '影视 · 音乐 · WebDAV');
+
   const data = await api('/api/sources');
   const list = data.list || [];
-  const sourceCards = list.length
-    ? list.map((s) => `
-        <div class="card source-card" onclick="enterSource('${s.id}','${esc(s.type)}')">
+
+  // 音乐网站不在影视源区域显示
+  const mediaSources = list.filter(
+    (s) => String(s.type || '').toLowerCase() !== 'music'
+  );
+
+  const musicCount = list.filter(
+    (s) => String(s.type || '').toLowerCase() === 'music'
+  ).length;
+
+  const sourceCards = mediaSources.length
+    ? mediaSources.map((s) => `
+        <div class="card source-card"
+             onclick="enterSource('${s.id}','${esc(s.type)}')">
           <div class="card-title">${esc(s.name)}</div>
           <div class="card-meta">${esc(s.type)} · ${esc(s.url)}</div>
           <div class="card-actions">
-            <button class="enter" onclick="event.stopPropagation();enterSource('${s.id}','${esc(s.type)}')">进入</button>
+            <button class="enter"
+              onclick="event.stopPropagation();enterSource('${s.id}','${esc(s.type)}')">
+              进入
+            </button>
           </div>
         </div>`).join('')
-    : '<div class="empty">暂无数据源<br>请管理员在「管理后台」中添加</div>';
+    : '<div class="empty">暂无影视数据源</div>';
+
+  const musicCard = `
+    <div class="card source-card" onclick="go('/music')">
+      <div class="card-title">🎵 音乐中心</div>
+      <div class="card-meta">
+        ${musicCount > 0
+          ? `已配置 ${musicCount} 个音乐网站`
+          : '可在管理后台添加音乐网站'}
+      </div>
+      <div class="card-actions">
+        <button class="enter"
+          onclick="event.stopPropagation();go('/music')">
+          进入
+        </button>
+      </div>
+    </div>`;
+
   const webdavCard = `
     <div class="card source-card" onclick="go('/webdav')">
       <div class="card-title">📁 WebDAV 网盘</div>
       <div class="card-meta">播放网盘内 .mp4 / .strm</div>
       <div class="card-actions">
-        <button class="enter" onclick="event.stopPropagation();go('/webdav')">进入</button>
+        <button class="enter"
+          onclick="event.stopPropagation();go('/webdav')">
+          进入
+        </button>
       </div>
     </div>`;
+
   app.innerHTML = `
-    <div class="page-title">选择数据源</div>
+    <div class="page-title">影视与娱乐</div>
+
     <div class="card-grid">
       ${sourceCards}
+      ${musicCard}
       ${webdavCard}
     </div>`;
 }
 
-/** 根据源类型进入对应浏览页：applecms → 站点浏览；iptv 已禁用 */
+
+// ---------- 音乐中心 ----------
+let musicSources = [];
+
+async function renderMusic() {
+  setTitle('🎵 音乐中心', '选择音乐网站');
+
+  app.innerHTML = '<div class="loading">加载中…</div>';
+
+  const data = await api('/api/sources');
+
+  musicSources = (data.list || []).filter(
+    (s) => String(s.type || '').toLowerCase() === 'music'
+  );
+
+  const cards = musicSources.length
+    ? musicSources.map((s, index) => `
+        <div class="card source-card"
+             onclick="openMusicSource(${index})">
+
+          <div class="card-title">
+            🎵 ${esc(s.name || '音乐网站')}
+          </div>
+
+          <div class="card-meta">
+            ${esc(s.remark || s.url || '')}
+          </div>
+
+          <div class="card-actions">
+            <button class="enter"
+              onclick="event.stopPropagation();openMusicSource(${index})">
+              打开网站
+            </button>
+          </div>
+
+        </div>`).join('')
+    : `
+      <div class="empty">
+        暂无音乐网站
+        <br><br>
+        请管理员进入后台添加：
+        <br>
+        数据源类型 → 🎵 音乐网站
+      </div>`;
+
+  app.innerHTML = `
+    <div style="margin-bottom:12px">
+      <button class="btn" onclick="go('/')">← 返回首页</button>
+    </div>
+
+    <div class="page-title">🎵 音乐网站</div>
+
+    <div class="card-grid">
+      ${cards}
+    </div>`;
+}
+
+
+// ---------- 打开音乐网站 ----------
+function openMusicSource(index) {
+  const src = musicSources[index];
+
+  if (!src || !src.url) {
+    return showToast('音乐网站地址不存在');
+  }
+
+  const url = String(src.url).trim();
+
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== 'http:' &&
+        parsed.protocol !== 'https:') {
+      return showToast('音乐网站地址格式不正确');
+    }
+  } catch (_) {
+    return showToast('音乐网站地址格式不正确');
+  }
+
+  location.href = url;
+}
+
+window.openMusicSource = openMusicSource;
+
+
+/** 根据源类型进入对应页面 */
 function enterSource(sourceId, type) {
-  if (String(type || '').toLowerCase() === 'iptv') {
+  const sourceType = String(type || '').toLowerCase();
+
+  if (sourceType === 'music') {
+    go('/music');
+    return;
+  }
+
+  if (sourceType === 'iptv') {
     showToast('IPTV 功能已禁用（本部署已移除）');
     return;
   }
+
   enterSourceBrowse(sourceId);
 }
+
 window.enterSource = enterSource;
 
 // ---------- IPTV 频道列表 ----------
