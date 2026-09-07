@@ -191,6 +191,42 @@ async function applyMode() {
         }
       },
     });
+    // Tesla / Chromium：WebAudio 可能需要用户手势才能恢复声音
+    const unlockAudio = async () => {
+      if (!iptvPlayer || typeof iptvPlayer.resume !== 'function') return;
+
+      const ok = await iptvPlayer.resume();
+
+      if (ok) {
+        showToast('🔊 声音已开启');
+
+        driveHost.removeEventListener('pointerdown', unlockAudio);
+        driveHost.removeEventListener('click', unlockAudio);
+        driveHost._tmhAudioUnlockHandler = null;
+      } else {
+        showToast('🔊 请再轻触一次画面开启声音');
+      }
+    };
+
+    // 防止切集/切线路后重复绑定
+    if (driveHost._tmhAudioUnlockHandler) {
+      driveHost.removeEventListener(
+        'pointerdown',
+        driveHost._tmhAudioUnlockHandler
+      );
+      driveHost.removeEventListener(
+        'click',
+        driveHost._tmhAudioUnlockHandler
+      );
+    }
+
+    driveHost._tmhAudioUnlockHandler = unlockAudio;
+
+    driveHost.addEventListener('pointerdown', unlockAudio);
+    driveHost.addEventListener('click', unlockAudio);
+
+    showToast('🔊 轻触电影画面开启声音');
+
   } catch (e) {
     if (startupTimer) { clearTimeout(startupTimer); startupTimer = null; }
     if (!ctx._fallback && !ctx._fallbackTried) {
