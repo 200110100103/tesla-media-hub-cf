@@ -163,19 +163,42 @@ async function createPlayer(hostEl, url, opts = {}) {
   await start(false);
 
   return {
-    destroy,
-    pause() {
-      if (player && typeof player.pause === 'function') {
-        try { player.pause(); } catch (_) { /* ignore */ }
+    return {
+  destroy,
+
+  pause() {
+    if (player && typeof player.pause === 'function') {
+      try { player.pause(); } catch (_) { /* ignore */ }
+    }
+  },
+
+  async resume() {
+    if (player && typeof player.resume === 'function') {
+      try {
+        await player.resume();
+        return true;
+      } catch (_) {
+        return false;
       }
-    },
-    getCurrentTime() {
-      try { return player ? (player.currentTime || 0) : 0; } catch (_) { return 0; }
-    },
-    getDuration() {
-      try { return player ? (player.duration || 0) : 0; } catch (_) { return 0; }
-    },
-  };
-}
+    }
+    return false;
+  },
+
+  getCurrentTime() {
+    try {
+      return player ? (player.currentTime || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  },
+
+  getDuration() {
+    try {
+      return player ? (player.duration || 0) : 0;
+    } catch (_) {
+      return 0;
+    }
+  },
+};
 
 window.IptvAdapter = { isSupported, createPlayer };
